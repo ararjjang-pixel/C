@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>탄소발자국 줄이면 받는 포인트</title>
+  <style>
+    /* 깔끔하면서 약간 병맛 포인트 */
+    :root{
+      --sidebar:#0f1724;
+      --bg:#f5f8fb;
+      --card:#ffffff;
+      --accent:#ff4d4d;
+      --muted:#6b7280;
+      --glass: rgba(255,255,255,0.7);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, "Noto Sans KR", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:linear-gradient(180deg,#f7fbff 0%, #f5f8fb 100%);}
+    .app{display:flex;height:100vh;min-height:600px;overflow:hidden}
+    /* LEFT SIDEBAR */
+    .sidebar{width:280px;background:var(--sidebar);color:#fff;padding:20px;display:flex;flex-direction:column;gap:14px}
+    .logo{font-weight:800;font-size:18px;text-align:center;padding:6px 10px;border-radius:10px;background:linear-gradient(90deg,#0b1220,#101827)}
+    .nav{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+    .nav button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#e6eef8;padding:12px;border-radius:10px;text-align:left;cursor:pointer;font-weight:700}
+    .nav button.active{background:linear-gradient(90deg,#ff9a9a,#ff4d4d);color:#fff;box-shadow:0 8px 18px rgba(255,77,77,0.18)}
+    .sidebar-footer{margin-top:auto;font-size:13px;color:rgba(255,255,255,0.6);text-align:center}
+    /* MAIN */
+    .main{flex:1;overflow:auto;padding:28px}
+    .wrap{max-width:1100px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    header h1{margin:0;font-size:20px;color:#111827}
+    .btn{background:linear-gradient(90deg,#ffd27a,#ffb347);border:none;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
+    /* Grid */
+    .home-grid{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+    .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 8px 24px rgba(15,23,36,0.06);border:1px solid rgba(15,23,36,0.03)}
+    /* big meter */
+    .big-circle-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;height:560px;padding-top:12px}
+    .target-label{font-weight:800;color:#374151}
+    .meter{position:relative;width:380px;height:380px}
+    canvas#meter{width:100%;height:100%;display:block}
+    .center-info{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center}
+    .center-info .kg{font-weight:900;font-size:28px;color:#1f2937}
+    .center-info .desc{font-size:12px;color:var(--muted)}
+    /* penguin */
+    .penguin{position:absolute;left:50%;transform:translateX(-50%);top:-14px;width:120px;height:120px;transition:transform .18s ease}
+    .penguin svg{width:100%;height:100%;display:block}
+    .penguin .angry{display:none}
+    .penguin.angry .calm{display:none}
+    .penguin.angry .angry{display:block}
+    /* right column */
+    .control{display:flex;flex-direction:column;gap:12px}
+    .stat{font-weight:900;font-size:18px;color:#111827}
+    input[type=range]{width:100%}
+    input[type=number]{width:100%;padding:8px;border-radius:8px;border:1px solid #e6edf3}
+    .small-muted{font-size:13px;color:var(--muted)}
+    .points-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+    .point-card{padding:10px;border-radius:10px;background:linear-gradient(180deg,#fff,#fff8f0);border:1px dashed #f3e6e6}
+    /* sections */
+    .section{min-height:calc(100vh - 140px);padding-top:8px}
+    /* charts and tables */
+    .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .chart{width:100%;height:220px;background:linear-gradient(180deg,#fff,#fbfdff);border-radius:8px;padding:6px;border:1px solid #eef2f7}
+    table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+    th,td{padding:8px;border-bottom:1px solid #f2f6fb;text-align:center;color:#374151}
+    /* responsive */
+    @media(max-width:980px){
+      .app{flex-direction:column}
+      .sidebar{width:100%;display:flex;flex-direction:row;gap:8px;overflow:auto;padding:12px}
+      .home-grid{grid-template-columns:1fr;gap:12px}
+      .meter{width:320px;height:320px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">🐧 탄소발자국 줄이면 받는 포인트</div>
+      <nav class="nav" role="navigation" aria-label="메뉴">
+        <button class="nav-btn active" data-target="home">홈</button>
+        <button class="nav-btn" data-target="points">포인트 사용</button>
+        <button class="nav-btn" data-target="stats">통계</button>
+        <button class="nav-btn" data-target="sponsor">후원</button>
+      </nav>
+      <div class="sidebar-footer">실시간 이동 추적 • 시뮬레이터 포함</div>
+    </aside>
+
+    <main class="main">
+      <div class="wrap">
+        <header>
+          <h1>탄소발자국 줄이면 받는 포인트</h1>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn" id="toggleTrack">위치추적 시작</button>
+            <button class="btn" id="resetBtn" style="background:linear-gradient(90deg,#ffdddd,#ffbdbd)">데이터 리셋</button>
+          </div>
+        </header>
+
+        <!-- HOME -->
+        <section id="home" class="section">
+          <div class="home-grid">
+            <div class="card big-circle-wrap" aria-live="polite">
+              <div style="width:100%;display:flex;justify-content:space-between;align-items:center">
+                <div class="target-label">오늘 목표: <strong id="targetKg">2.0</strong> kgCO₂</div>
+                <div class="small-muted">포인트: <strong id="pointsLarge">0 P</strong></div>
+              </div>
+
+              <div class="meter" role="img" aria-label="탄소 미터">
+                <canvas id="meter" width="760" height="760"></canvas>
+
+                <!-- penguin -->
+                <div class="penguin" id="penguin">
+                  <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                    <g class="calm">
+                      <ellipse cx="60" cy="70" rx="36" ry="32" fill="#2b2b2b" />
+                      <ellipse cx="60" cy="58" rx="26" ry="22" fill="#fff" />
+                      <circle cx="50" cy="55" r="4" fill="#000" />
+                      <circle cx="70" cy="55" r="4" fill="#000" />
+                      <path d="M54 70 q6 8 12 0" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    </g>
+                    <g class="angry">
+                      <ellipse cx="60" cy="70" rx="36" ry="32" fill="#2b2b2b" />
+                      <ellipse cx="60" cy="58" rx="26" ry="22" fill="#fff" />
+                      <path d="M44 53 q8 -6 12 0" stroke="#000" stroke-width="3" fill="none" stroke-linecap="round"/>
+                      <path d="M76 53 q-8 -6 -12 0" stroke="#000" stroke-width="3" fill="none" stroke-linecap="round"/>
+                      <path d="M54 74 q6 -2 12 0" stroke="#000" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    </g>
+                  </svg>
+                </div>
+
+                <div class="center-info" aria-hidden="true">
+                  <div class="kg" id="currentKg">0.00 kg</div>
+                  <div class="desc small-muted" id="detailDesc">이동으로 계산된 추정값</div>
+                </div>
+              </div>
+
+              <div style="width:100%;display:flex;gap:12px;align-items:flex-end;margin-top:6px">
+                <div style="flex:1">
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <div style="flex:1">
+                      <label class="small-muted">목표(kgCO₂)</label>
+                      <input id="targetInput" type="number" step="0.1" min="0" value="2.0" />
+                    </div>
+                    <div style="width:120px">
+                      <label class="small-muted">감소 기준(%)</label>
+                      <input id="threshold" type="number" min="1" max="100" value="10" />
+                    </div>
+                  </div>
+
+                  <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+                    <button class="btn" id="claimBtn">포인트 반영</button>
+                    <div style="flex:1" class="small-muted">어제와 비교하여 설정한 비율 이상 줄이면 포인트 지급</div>
+                  </div>
+
+                  <div style="margin-top:10px" class="small-muted">
+                    <div>어제: <strong id="yesterdayKg">--</strong> kg · 이동 거리(오늘): <strong id="todayKm">0.00</strong> km</div>
+                  </div>
+                </div>
+
+                <div style="width:240px" class="card" aria-hidden="true">
+                  <div style="font-weight:900">시뮬레이터 (테스트용)</div>
+                  <div style="margin-top:8px"><input type="range" id="simRange" min="0" max="3000" value="0" /></div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:6px">슬라이더는 그램 단위. 실제 추적을 테스트하려면 위치추적을 켜세요.</div>
+                </div>
+              </div>
+            </div>
+
+            <aside class="card control">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div>
+                  <div class="stat">포인트</div>
+                  <div style="font-size:22px;font-weight:900;color:#111827" id="pointsDisplay">0 P</div>
+                </div>
+
+                <div>
+                  <div class="stat">추적 상태</div>
+                  <div class="small-muted" id="trackStatus">비활성</div>
+                </div>
+
+                <div>
+                  <div class="stat">포인트 사용 예시</div>
+                  <div class="points-list">
+                    <div class="point-card">커피 쿠폰 500P</div>
+                    <div class="point-card">지역 나무심기 참여권 1000P</div>
+                    <div class="point-card">탄소중립 굿즈 2000P</div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- POINTS -->
+        <section id="points" class="section" style="display:none">
+          <div class="card">
+            <h2 style="margin:0 0 8px 0">포인트 사용</h2>
+            <p class="small-muted">현재 포인트: <strong id="pointsNow">0</strong> P</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn redeem" data-cost="500">커피 쿠폰 (500P)</button>
+              <button class="btn redeem" data-cost="1000">나무심기 (1000P)</button>
+              <button class="btn redeem" data-cost="2000">굿즈 (2000P)</button>
+            </div>
+            <div id="redeemMsg" style="margin-top:12px;color:var(--muted)"></div>
+          </div>
+        </section>
+
+        <!-- STATS -->
+        <section id="stats" class="section" style="display:none">
+          <div class="card">
+            <h2 style="margin:0 0 12px 0">통계</h2>
+            <div class="charts-grid">
+              <div>
+                <div class="small-muted">일주일간 탄소(kg)</div>
+                <canvas id="weekChart" class="chart"></canvas>
+                <table id="weekTable"><thead><tr><th>날짜</th><th>kgCO₂</th></tr></thead><tbody></tbody></table>
+              </div>
+              <div>
+                <div class="small-muted">한달간 탄소(kg)</div>
+                <canvas id="monthChart" class="chart"></canvas>
+                <table id="monthTable"><thead><tr><th>날짜</th><th>kgCO₂</th></tr></thead><tbody></tbody></table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SPONSOR -->
+        <section id="sponsor" class="section" style="display:none">
+          <div class="card">
+            <h2 style="margin:0 0 8px 0">후원</h2>
+            <p class="small-muted">감사합니다! 후원 시 하트 이펙트가 터집니다.</p>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="btn" id="sponsor10">₩1,000 (데모)</button>
+              <button class="btn" id="sponsor50">₩5,000 (데모)</button>
+              <button class="btn" id="sponsor100">₩10,000 (데모)</button>
+            </div>
+            <div id="sponsorMsg" style="margin-top:12px;color:var(--muted)"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    /************************************************************************
+     * 데이터 구조: localStorage에 보관
+     * db = {
+     *   daily: { 'YYYY-MM-DD': kgCO2, ... },
+     *   points: number,
+     *   track: { lastPos: {lat,lon,t}, totalKmToday: number }
+     * }
+     ************************************************************************/
+    const DB_KEY = 'carbon_auto_demo_v2';
+    let db = JSON.parse(localStorage.getItem(DB_KEY) || '{}');
+    if(!db.daily) db.daily = {};
+    if(!db.points) db.points = 0;
+    if(!db.track) db.track = {};
+    const today = (d=>d.toISOString().slice(0,10))(new Date());
+    const yesterday = (d=>d.toISOString().slice(0,10))(new Date(Date.now()-86400000));
+    if(db.daily[today] === undefined) db.daily[today] = 0;
+    if(db.daily[yesterday] === undefined) db.daily[yesterday] = 0;
+
+    function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+
+    // UI 엘리먼트
+    const navBtns = document.querySelectorAll('.nav-btn');
+    const sections = {
+      home: document.getElementById('home'),
+      points: document.getElementById('points'),
+      stats: document.getElementById('stats'),
+      sponsor: document.getElementById('sponsor')
+    };
+    navBtns.forEach(b=>b.addEventListener('click', ()=>{
+      navBtns.forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      Object.values(sections).forEach(s=>s.style.display='none');
+      sections[b.dataset.target].style.display = 'block';
+      if(b.dataset.target === 'stats'){ setTimeout(()=>{ renderWeek(); renderMonth(); },150); }
+    }));
+
+    // elements
+    const meterCanvas = document.getElementById('meter');
+    const ctx = meterCanvas.getContext('2d');
+    const penguin = document.getElementById('penguin');
+    const currentKgEl = document.getElementById('currentKg');
+    const targetInput = document.getElementById('targetInput');
+    const targetKgEl = document.getElementById('targetKg');
+    const simRange = document.getElementById('simRange');
+    const claimBtn = document.getElementById('claimBtn');
+    const thresholdInput = document.getElementById('threshold');
+    const pointsDisplay = document.getElementById('pointsDisplay');
+    const pointsNowEl = document.getElementById('pointsNow');
+    const pointsLarge = document.getElementById('pointsLarge');
+    const todayKmEl = document.getElementById('todayKm');
+    const yesterdayKgEl = document.getElementById('yesterdayKg');
+    const trackStatusEl = document.getElementById('trackStatus');
+    const toggleTrackBtn = document.getElementById('toggleTrack');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // 시뮬레이터
+    simRange.addEventListener('input', ()=>{
+      const g = parseInt(simRange.value,10);
+      // 슬라이더는 grams -> kg
+      db.daily[today] = +(g/1000).toFixed(3);
+      saveDB(); renderAll();
+    });
+
+    // 포인트 사용
+    document.querySelectorAll('.redeem').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const cost = parseInt(b.dataset.cost,10);
+        if(db.points >= cost){ db.points -= cost; document.getElementById('redeemMsg').textContent = `사용 완료: ${cost}P 소비`; }
+        else { document.getElementById('redeemMsg').textContent = '포인트가 부족합니다.'; }
+        saveDB(); renderAll();
+      });
+    });
+
+    // 후원
+    ['sponsor10','sponsor50','sponsor100'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('click', ()=>{ document.getElementById('sponsorMsg').textContent = '감사합니다! 하트 폭발!'; heartBomb(); });
+    });
+
+    // 하트 이펙트
+    function heartBomb(){
+      for(let i=0;i<24;i++){
+        const h = document.createElement('div'); h.textContent='💖';
+        h.style.position='fixed'; h.style.left=(10+Math.random()*80)+'%'; h.style.top=(10+Math.random()*70)+'%';
+        h.style.fontSize=(12+Math.random()*36)+'px'; h.style.opacity='0.95'; h.style.pointerEvents='none';
+        document.body.appendChild(h);
+        setTimeout(()=>{ h.style.transition='all 900ms ease'; h.style.transform='translateY(-40px) rotate('+ (Math.random()*40-20) +'deg)'; h.style.opacity='0'; },10);
+        setTimeout(()=>h.remove(),1100);
+      }
+    }
+
+    // 포인트 지급 로직 (어제 대비 설정 비율 이상 줄였을 때)
+    claimBtn.addEventListener('click', ()=>{
+      const cur = db.daily[today] || 0;
+      const prev = db.daily[yesterday] || 0;
+      const thresh = (parseFloat(thresholdInput.value)||10) / 100;
+      if(prev <= 0){ alert('어제 데이터가 없거나 0kg입니다. 비교 불가.'); return; }
+      const reduction = (prev - cur) / prev;
+      if(reduction >= thresh){
+        // 포인트 환산: (감소한 kg) * 100 (demo) => 정수
+        const pointsGain = Math.max(1, Math.round((prev - cur) * 100));
+        db.points += pointsGain;
+        alert(`성공! ${pointsGain}P 획득했습니다.`);
+      } else {
+        alert('줄인 비율이 기준에 미치지 못합니다.');
+      }
+      saveDB(); renderAll();
+    });
+
+    // 리셋
+    resetBtn.addEventListener('click', ()=>{
+      if(confirm('데모 데이터를 초기화할까요?')){
+        db = { daily: {}, points: 0, track: {} };
+        const d = new Date(); db.daily[d.toISOString().slice(0,10)] = 0;
+        saveDB(); renderAll();
+      }
+    });
+
+    /**********************
+     * 이동 추적 로직 (Geolocation)
+     * - successive 위치에서 거리 계산 (Haversine)
+     * - 속도로 이동수단 추정
+     * - 이동수단별 kgCO2/km 계수 적용
+     **********************/
+    let watchId = null;
+    let tracking = false;
+
+    // 배출계수(kg CO2 per km) — 추정치(데모용)
+    const EMISSION_FACTORS = {
+      car: 0.210,     // 승용차 평균 0.21 kgCO2/km
+      bus: 0.089,     // 버스(승객분산) 추정
+      motorcycle: 0.12,
+      train: 0.045,
+      bicycle: 0.0,
+      walk: 0.0,
+      electric_car: 0.120 // 전기차 추정값(전력 mix)
+    };
+
+    // 속도(km/h)로 교통수단 추정
+    function guessTransport(speedKmh){
+      if(speedKmh < 6) return 'walk';
+      if(speedKmh < 20) return 'bicycle'; // 전동킥보드/자전거 포함
+      if(speedKmh < 40) return 'bus';
+      if(speedKmh < 120) return 'car';
+      return 'train';
+    }
+
+    // Haversine 거리 계산 (km)
+    function haversine(lat1, lon1, lat2, lon2){
+      const R = 6371.0; // km
+      const toRad = (v)=> v * Math.PI/180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    function startTracking(){
+      if(!navigator.geolocation){ alert('이 브라우저는 위치 서비스를 지원하지 않습니다.'); return; }
+      if(tracking) return;
+      watchId = navigator.geolocation.watchPosition(positionHandler, geoError, { enableHighAccuracy:true, maximumAge:5000, timeout:10000 });
+      tracking = true;
+      toggleTrackBtn.textContent = '위치추적 중지';
+      trackStatusEl.textContent = '추적중';
+    }
+
+    function stopTracking(){
+      if(watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watchId = null; tracking = false;
+      toggleTrackBtn.textContent = '위치추적 시작';
+      trackStatusEl.textContent = '비활성';
+    }
+
+    toggleTrackBtn.addEventListener('click', ()=>{
+      if(tracking) stopTracking(); else startTracking();
+    });
+
+    function geoError(err){
+      console.warn('Geolocation error', err);
+      alert('위치 권한이 없거나 오류가 발생했습니다. 권한을 허용했는지 확인하세요.');
+      stopTracking();
+    }
+
+    function positionHandler(pos){
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const t = pos.timestamp;
+      // 이전 위치가 있으면 거리 계산
+      if(db.track.lastPos && db.track.lastPos.lat !== undefined){
+        const prev = db.track.lastPos;
+        // 시간 diff in hours
+        const dt = Math.max(1, (t - prev.t)) / 3600000; // hours, avoid 0
+        const dkm = haversine(prev.lat, prev.lon, lat, lon); // km
+        const speedKmh = dkm / dt;
+        const mode = guessTransport(speedKmh);
+        const factor = EMISSION_FACTORS[mode] !== undefined ? EMISSION_FACTORS[mode] : EMISSION_FACTORS.car;
+        const kgCO2 = dkm * factor;
+        // 누적 오늘 거리, 배출
+        db.track.totalKmToday = (db.track.totalKmToday || 0) + dkm;
+        db.daily[today] = +( (db.daily[today] || 0) + kgCO2 ).toFixed(4);
+        // update lastPos
+        db.track.lastPos = { lat, lon, t };
+        saveDB();
+        renderAll();
+      } else {
+        db.track.lastPos = { lat, lon, t };
+        if(db.track.totalKmToday === undefined) db.track.totalKmToday = 0;
+        saveDB();
+      }
+    }
+
+    /**********************
+     * 캔버스 미터 렌더링
+     **********************/
+    function renderMeter(){
+      const dpr = window.devicePixelRatio || 1;
+      const w = meterCanvas.clientWidth;
+      const h = meterCanvas.clientHeight;
+      meterCanvas.width = w * dpr;
+      meterCanvas.height = h * dpr;
+      ctx.clearRect(0,0,meterCanvas.width,meterCanvas.height);
+      ctx.scale(dpr,dpr);
+
+      const cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 24;
+      // base ring
+      ctx.lineWidth = 22; ctx.lineCap='round';
+      ctx.beginPath(); ctx.strokeStyle = '#eee'; ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+
+      // percentage: current / target
+      const cur = db.daily[today] || 0;
+      const target = parseFloat(targetInput.value) || 0.001;
+      const pct = Math.min(1, cur / Math.max(0.0001, target));
+      const endAngle = -Math.PI/2 + pct * Math.PI*2;
+
+      // color gradient red increasing
+      const red = Math.round(255 * pct);
+      const green = Math.round(120 * (1 - pct));
+      ctx.beginPath(); ctx.strokeStyle = `rgb(${red},${green},40)`; ctx.arc(cx,cy,r,-Math.PI/2,endAngle); ctx.stroke();
+
+      // center text
+      ctx.font = '700 28px system-ui, sans-serif'; ctx.fillStyle = '#111827'; ctx.textAlign='center';
+      ctx.fillText((cur).toFixed(2) + ' kg', cx, cy);
+      ctx.font = '12px system-ui, sans-serif'; ctx.fillStyle = '#6b7280'; ctx.fillText('오늘 추정 배출량', cx, cy + 22);
+
+      // penguin mood
+      if(pct < 0.4){
+        penguin.classList.remove('angry');
+        penguin.style.transform = 'translateX(-50%) translateY(0)';
+      } else if(pct < 0.75){
+        penguin.classList.add('angry');
+        penguin.style.transform = 'translateX(-50%) translateY(-6px) scale(1.02)';
+      } else {
+        penguin.classList.add('angry');
+        penguin.style.transform = 'translateX(-50%) translateY(-14px) scale(1.08)';
+      }
+    }
+
+    /**********************
+     * 통계 렌더링 (간단 캔버스 차트)
+     **********************/
+    function getLastNDates(n){
+      const arr=[];
+      for(let i=0;i<n;i++){
+        const d = new Date(Date.now() - (n-1-i)*86400000);
+        arr.push(d.toISOString().slice(0,10));
+      }
+      return arr;
+    }
+
+    function renderWeek(){
+      const dates = getLastNDates(7);
+      const data = dates.map(d => db.daily[d] || 0);
+      // table
+      const tbody = document.querySelector('#weekTable tbody'); tbody.innerHTML = '';
+      dates.forEach((d,i)=>{ const tr = document.createElement('tr'); tr.innerHTML = `<td>${d}</td><td>${data[i].toFixed(2)}</td>`; tbody.appendChild(tr); });
+
+      // chart
+      const c = document.getElementById('weekChart'); const g = c.getContext('2d');
+      c.width = c.clientWidth * 2; c.height = c.clientHeight * 2; g.clearRect(0,0,c.width,c.height);
+      const pad = 36 * 2; const max = Math.max(0.5, ...data) * 2;
+      const w = (c.width - pad*2) / data.length;
+      data.forEach((v,i)=>{
+        const h = Math.round((v/max) * (c.height - pad*2));
+        g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(pad + i*w + 8, c.height - pad - h, w - 16, h);
+      });
+    }
+
+    function renderMonth(){
+      const dates = getLastNDates(30);
+      const data = dates.map(d => db.daily[d] || 0);
+      // table
+      const tbody = document.querySelector('#monthTable tbody'); tbody.innerHTML = '';
+      dates.forEach((d,i)=>{ const tr = document.createElement('tr'); tr.innerHTML = `<td>${d}</td><td>${data[i].toFixed(2)}</td>`; tbody.appendChild(tr); });
+
+      // chart
+      const c = document.getElementById('monthChart'); const g = c.getContext('2d');
+      c.width = c.clientWidth * 2; c.height = c.clientHeight * 2; g.clearRect(0,0,c.width,c.height);
+      const pad = 36 * 2; const max = Math.max(0.5, ...data) * 2;
+      const w = (c.width - pad*2) / data.length;
+      data.forEach((v,i)=>{
+        const h = Math.round((v/max) * (c.height - pad*2));
+        g.fillStyle = 'rgba(15,23,36,0.5)'; g.fillRect(pad + i*w + 2, c.height - pad - h, Math.max(1, w - 4), h);
+      });
+    }
+
+    /**********************
+     * 초기 데모 데이터 채우기 (없는 날짜는 랜덤)
+     **********************/
+    (function fillDemo(){
+      const dates = getLastNDates(30);
+      let changed = false;
+      dates.forEach(d=>{
+        if(db.daily[d] === undefined){ db.daily[d] = +(Math.random()*2.2).toFixed(3); changed = true; }
+      });
+      if(changed) saveDB();
+    })();
+
+    /**********************
+     * 렌더 전체
+     **********************/
+    function renderAll(){
+      // UI texts
+      document.getElementById('pointsNow').textContent = db.points;
+      document.getElementById('pointsLarge').textContent = db.points + ' P';
+      pointsDisplay.textContent = db.points + ' P';
+      targetKgEl.textContent = parseFloat(targetInput.value || 0).toFixed(1);
+      todayKmEl.textContent = (db.track.totalKmToday || 0).toFixed(2);
+      yesterdayKgEl.textContent = (db.daily[yesterday] || 0).toFixed(2);
+      trackStatusEl.textContent = tracking ? '추적중' : '비활성';
+
+      // meter
+      renderMeter();
+      // stats
+      renderWeek();
+      renderMonth();
+    }
+
+    // 통계 탭에서 그리기 지연(버그 방지)
+    document.querySelector('button[data-target=stats]').addEventListener('click', ()=>{ setTimeout(()=>{ renderWeek(); renderMonth(); }, 200); });
+
+    // 위치 추적 상태 복구(단, 브라우저에 따라 자동 재시작 안됨)
+    renderAll();
+
+    // 간단한 시연용: 위치 추적 불가능할 때도 슬라이더로 조작 가능
+    // (이미 simRange가 input listener로 처리)
+
+    // 페이지 떠날 때 저장
+    window.addEventListener('beforeunload', saveDB);
+  </script>
+</body>
+</html>
